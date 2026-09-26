@@ -18,7 +18,7 @@ unclassified:
           modernSCM:
             scm:
               git:
-                remote: "https://github.com/adamko034/jenkins-pipeline-library.git"
+                remote: "https://github.com/hello-world-sample/jenkins-pipeline-library.git"
                 credentialsId: "github-pat"
 
 # Create / update jobs via Job DSL
