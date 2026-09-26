@@ -91,13 +91,10 @@ jobs:
         }
       }
 
-      // Manual QA promote (any released version)
+      // Manual QA redeploy from versions-qa.yaml
       pipelineJob('hello-world-deploy-qa') {
         displayName('hello-world-deploy-qa')
-        description('Deploy a released hello-world version to QA (enter version, confirm)')
-        parameters {
-          stringParam('VERSION', '', 'Released version to deploy (e.g. 0.0.4). No SNAPSHOT.')
-        }
+        description('Redeploy hello-world to QA from helm/versions-qa.yaml (confirm)')
         definition {
           cpsScm {
             scm {
@@ -115,13 +112,10 @@ jobs:
         }
       }
 
-      // Manual PROD promote
+      // Manual PROD redeploy from versions-prod.yaml
       pipelineJob('hello-world-deploy-prod') {
         displayName('hello-world-deploy-prod')
-        description('Deploy a released hello-world version to PROD (enter version, confirm)')
-        parameters {
-          stringParam('VERSION', '', 'Released version to deploy (e.g. 0.0.4). No SNAPSHOT.')
-        }
+        description('Redeploy hello-world to PROD from helm/versions-prod.yaml (confirm)')
         definition {
           cpsScm {
             scm {
@@ -205,10 +199,7 @@ jobs:
 
       pipelineJob('good-night-world-deploy-qa') {
         displayName('good-night-world-deploy-qa')
-        description('Deploy a released good-night-world version to QA')
-        parameters {
-          stringParam('VERSION', '', 'Released version (e.g. 0.0.1). No SNAPSHOT.')
-        }
+        description('Redeploy good-night-world to QA from helm/versions-qa.yaml (confirm)')
         definition {
           cpsScm {
             scm {
@@ -228,10 +219,7 @@ jobs:
 
       pipelineJob('good-night-world-deploy-prod') {
         displayName('good-night-world-deploy-prod')
-        description('Deploy a released good-night-world version to PROD')
-        parameters {
-          stringParam('VERSION', '', 'Released version (e.g. 0.0.1). No SNAPSHOT.')
-        }
+        description('Redeploy good-night-world to PROD from helm/versions-prod.yaml (confirm)')
         definition {
           cpsScm {
             scm {
