@@ -124,8 +124,7 @@ builds from indexing so a Jenkins restart does not rebuild every branch).
       (multi-stage Dockerfile runs Maven again inside the image).
    4. Checkout **hello-world-deploy** into `deploy/`.
    5. `helm upgrade --install hello-world … -n hello-world-dev -f values-dev.yaml`
-      with `--set image.repository` / `image.tag`, **`--wait`**, then an in-cluster
-      **smoke** (`curl` to `/actuator/health/readiness`).
+      with `--set image.repository` / `image.tag` and **`--wait`** (until pods Ready).
 4. DEV uses `image.pullPolicy: Always` so re-pushed SNAPSHOT tags are actually pulled.
 
 **Namespace:** `hello-world-dev` (from the app `Jenkinsfile` `namespace:` argument).
@@ -154,7 +153,7 @@ builds from indexing so a Jenkins restart does not rebuild every branch).
    5. Bump POM to next SNAPSHOT (`0.0.5-SNAPSHOT`), commit, push master + tag.
    6. Update **hello-world-deploy** `helm/versions-qa.yaml`:
       `hello-world: "0.0.4"` and push.
-   7. If `DEPLOY_QA=true`: Helm to **hello-world-qa** with `--wait` + smoke.
+   7. If `DEPLOY_QA=true`: Helm to **hello-world-qa** with `--wait`.
    8. Merge **master → develop** and push develop (keeps SNAPSHOT line in sync).
 
 **Trigger:** Manual only (pipeline job, not multibranch).
@@ -168,7 +167,7 @@ Job **hello-world-deploy-qa** (no parameters):
 1. Checkout deploy repo.
 2. Read tag from `helm/versions-qa.yaml`.
 3. Manual **Confirm** (shows file version vs current cluster tag).
-4. Helm to `hello-world-qa` + `--wait` + smoke.
+4. Helm to `hello-world-qa` with `--wait`.
 
 Use this to redeploy the *current* QA desired version (e.g. after a chart change),
 or if release ran with `DEPLOY_QA=false`.
@@ -181,7 +180,7 @@ or if release ran with `DEPLOY_QA=false`.
    (today: edit & push; release does **not** auto-write PROD).
 2. Run **hello-world-deploy-prod**.
 3. Job reads `versions-prod.yaml`, asks for confirm, Helm to **hello-world-prod**
-   + `--wait` + smoke.
+   + `--wait`.
 
 ---
 
@@ -207,8 +206,7 @@ App Jenkinsfiles only pass config, for example:
 microserviceCi(
     app: 'hello-world',
     image: 'adamko034/hello-world',
-    namespace: 'hello-world-dev',
-    servicePort: 1234
+    namespace: 'hello-world-dev'
 )
 ```
 
@@ -274,7 +272,7 @@ docker compose up --build
 
 - **GitOps-lite:** Jenkins writes desired tags to git *and* runs `helm upgrade`.
   There is no Argo CD/Flux reconciler.
-- **Deploy after wait:** Every Helm apply uses `--wait` and a readiness smoke via
-  a one-shot `curl` pod in the target namespace.
+- **Deploy with wait:** Every Helm apply uses `--wait` so the job fails if pods
+  never become Ready (readiness probe).
 - **PROD promote:** Updating `versions-prod.yaml` is still a human (or future job)
   step; deploy-prod only applies what is already in that file.
