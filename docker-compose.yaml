@@ -1,0 +1,27 @@
+services:
+  jenkins:
+    build: .
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      CASC_JENKINS_CONFIG: /casc
+      # App repo (Jenkinsfiles + source)
+      GIT_REPO_URL: https://github.com/adamko034/sping-boot-docker-jenkins-sample.git
+      # GitOps / Helm charts
+      DEPLOY_GIT_REPO_URL: https://github.com/adamko034/hello-world-deploy.git
+      DEPLOY_GIT_BRANCH: main
+      # Must exist in Jenkins credentials (Username/password or PAT for GitHub)
+      GIT_CREDENTIALS_ID: github-pat
+      # good-night-world app repo
+      GOOD_NIGHT_GIT_REPO_URL: https://github.com/adamko034/good-night-world.git
+      # Shared Jenkins library (also configured in casc globalLibraries)
+      PIPELINE_LIBRARY_GIT_REPO_URL: https://github.com/adamko034/jenkins-pipeline-library.git
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ./casc:/casc:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+volumes:
+  jenkins_home:
+    external: true

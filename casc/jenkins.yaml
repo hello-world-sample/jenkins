@@ -1,0 +1,250 @@
+# Jenkins Configuration as Code
+# Jobs are created/updated on every Jenkins startup.
+
+jenkins:
+  systemMessage: "Local Jenkins — jobs managed by Configuration as Code"
+
+unclassified:
+  location:
+    url: "http://localhost:8080/"
+  globalLibraries:
+    libraries:
+      - name: "pipeline-library"
+        defaultVersion: "main"
+        implicit: false
+        allowVersionOverride: true
+        includeInChangesets: true
+        retriever:
+          modernSCM:
+            scm:
+              git:
+                remote: "https://github.com/adamko034/jenkins-pipeline-library.git"
+                credentialsId: "github-pat"
+
+# Create / update jobs via Job DSL
+jobs:
+  - script: |
+      // Multibranch CI: feature (Maven), develop (DEV), master (CI gate only)
+      // Shared Helm charts: DEPLOY_GIT_REPO_URL (hello-world-deploy) → namespaces dev/qa/prod
+      multibranchPipelineJob('hello-world') {
+        displayName('hello-world')
+        description('CI: feature (Maven), develop (DEV in ns/dev), master (CI gate). Charts: hello-world-deploy.')
+        branchSources {
+          branchSource {
+            source {
+              git {
+                id('hello-world-git')
+                remote('${GIT_REPO_URL}')
+                credentialsId('${GIT_CREDENTIALS_ID}')
+                traits {
+                  gitBranchDiscovery()
+                }
+              }
+            }
+            // Job DSL re-runs on every Jenkins start → reindex. Don't build from indexing.
+            strategy {
+              allBranchesSame {
+                props {
+                  suppressAutomaticTriggering {
+                    strategy('INDEXING')
+                    triggeredBranchesRegex('.*')
+                  }
+                }
+              }
+            }
+          }
+        }
+        factory {
+          workflowBranchProjectFactory {
+            scriptPath('Jenkinsfile')
+          }
+        }
+        orphanedItemStrategy {
+          discardOldItems {
+            numToKeep(20)
+          }
+        }
+      }
+
+      // Manual release from master → tag, optional QA, sync develop
+      pipelineJob('hello-world-release') {
+        displayName('hello-world-release')
+        description('Release from master: bump SemVer, Docker push, tag, optional QA deploy, sync develop')
+        parameters {
+          choiceParam('BUMP', ['patch', 'minor', 'major'], 'Release bump from current master SNAPSHOT (e.g. 0.0.4-SNAPSHOT + patch → 0.0.4).')
+          booleanParam('DEPLOY_QA', true, 'Deploy this release to QA. Uncheck to skip (use hello-world-deploy-qa later).')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('${GIT_REPO_URL}')
+                  credentials('${GIT_CREDENTIALS_ID}')
+                }
+                branches('*/master')
+              }
+            }
+            scriptPath('Jenkinsfile.release')
+            lightweight(false)
+          }
+        }
+      }
+
+      // Manual QA promote (any released version)
+      pipelineJob('hello-world-deploy-qa') {
+        displayName('hello-world-deploy-qa')
+        description('Deploy a released hello-world version to QA (enter version, confirm)')
+        parameters {
+          stringParam('VERSION', '', 'Released version to deploy (e.g. 0.0.4). No SNAPSHOT.')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('${GIT_REPO_URL}')
+                  credentials('${GIT_CREDENTIALS_ID}')
+                }
+                branches('*/master')
+              }
+            }
+            scriptPath('Jenkinsfile.deploy-qa')
+            lightweight(false)
+          }
+        }
+      }
+
+      // Manual PROD promote
+      pipelineJob('hello-world-deploy-prod') {
+        displayName('hello-world-deploy-prod')
+        description('Deploy a released hello-world version to PROD (enter version, confirm)')
+        parameters {
+          stringParam('VERSION', '', 'Released version to deploy (e.g. 0.0.4). No SNAPSHOT.')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('${GIT_REPO_URL}')
+                  credentials('${GIT_CREDENTIALS_ID}')
+                }
+                branches('*/master')
+              }
+            }
+            scriptPath('Jenkinsfile.deploy-prod')
+            lightweight(false)
+          }
+        }
+      }
+
+      // --- good-night-world (charts in shared hello-world-deploy, ns dev/qa/prod) ---
+      multibranchPipelineJob('good-night-world') {
+        displayName('good-night-world')
+        description('CI: feature (Maven), develop (DEV in ns/dev), master (CI gate). Charts: hello-world-deploy.')
+        branchSources {
+          branchSource {
+            source {
+              git {
+                id('good-night-world-git')
+                remote('${GOOD_NIGHT_GIT_REPO_URL}')
+                credentialsId('${GIT_CREDENTIALS_ID}')
+                traits {
+                  gitBranchDiscovery()
+                }
+              }
+            }
+            strategy {
+              allBranchesSame {
+                props {
+                  suppressAutomaticTriggering {
+                    strategy('INDEXING')
+                    triggeredBranchesRegex('.*')
+                  }
+                }
+              }
+            }
+          }
+        }
+        factory {
+          workflowBranchProjectFactory {
+            scriptPath('Jenkinsfile')
+          }
+        }
+        orphanedItemStrategy {
+          discardOldItems {
+            numToKeep(20)
+          }
+        }
+      }
+
+      pipelineJob('good-night-world-release') {
+        displayName('good-night-world-release')
+        description('Release from master: bump SemVer, Docker push, tag, optional QA, sync develop')
+        parameters {
+          choiceParam('BUMP', ['patch', 'minor', 'major'], 'Release bump from current master SNAPSHOT.')
+          booleanParam('DEPLOY_QA', true, 'Deploy this release to QA.')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('${GOOD_NIGHT_GIT_REPO_URL}')
+                  credentials('${GIT_CREDENTIALS_ID}')
+                }
+                branches('*/master')
+              }
+            }
+            scriptPath('Jenkinsfile.release')
+            lightweight(false)
+          }
+        }
+      }
+
+      pipelineJob('good-night-world-deploy-qa') {
+        displayName('good-night-world-deploy-qa')
+        description('Deploy a released good-night-world version to QA')
+        parameters {
+          stringParam('VERSION', '', 'Released version (e.g. 0.0.1). No SNAPSHOT.')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('${GOOD_NIGHT_GIT_REPO_URL}')
+                  credentials('${GIT_CREDENTIALS_ID}')
+                }
+                branches('*/master')
+              }
+            }
+            scriptPath('Jenkinsfile.deploy-qa')
+            lightweight(false)
+          }
+        }
+      }
+
+      pipelineJob('good-night-world-deploy-prod') {
+        displayName('good-night-world-deploy-prod')
+        description('Deploy a released good-night-world version to PROD')
+        parameters {
+          stringParam('VERSION', '', 'Released version (e.g. 0.0.1). No SNAPSHOT.')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('${GOOD_NIGHT_GIT_REPO_URL}')
+                  credentials('${GIT_CREDENTIALS_ID}')
+                }
+                branches('*/master')
+              }
+            }
+            scriptPath('Jenkinsfile.deploy-prod')
+            lightweight(false)
+          }
+        }
+      }
