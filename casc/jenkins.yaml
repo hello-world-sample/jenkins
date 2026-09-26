@@ -25,10 +25,10 @@ unclassified:
 jobs:
   - script: |
       // Multibranch CI: feature (Maven), develop (DEV), master (CI gate only)
-      // Shared Helm charts: DEPLOY_GIT_REPO_URL (hello-world-deploy) → namespaces dev/qa/prod
+      // Shared Helm charts: DEPLOY_GIT_REPO_URL (hello-world-deploy) → namespaces hello-world-{dev,qa,prod}
       multibranchPipelineJob('hello-world') {
         displayName('hello-world')
-        description('CI: feature (Maven), develop (DEV in ns/dev), master (CI gate). Charts: hello-world-deploy.')
+        description('CI: feature (Maven), develop (DEV in ns/hello-world-dev), master (CI gate). Charts: hello-world-deploy.')
         branchSources {
           branchSource {
             source {
@@ -142,7 +142,7 @@ jobs:
       // --- good-night-world (charts in shared hello-world-deploy, ns dev/qa/prod) ---
       multibranchPipelineJob('good-night-world') {
         displayName('good-night-world')
-        description('CI: feature (Maven), develop (DEV in ns/dev), master (CI gate). Charts: hello-world-deploy.')
+        description('CI: feature (Maven), develop (DEV in ns/hello-world-dev), master (CI gate). Charts: hello-world-deploy.')
         branchSources {
           branchSource {
             source {
